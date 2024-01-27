@@ -8,7 +8,7 @@ Express.js
 Cors
 mysql2
 
-Connected to database mysql
+Connected to database mysql (mysql branch)
 - .env file uploaded with mysql information
 - .env file added in package.json 
 - server.js listening to PORT
@@ -16,8 +16,10 @@ Connected to database mysql
 start project with: npm start
 end project with: Ctrl + c
 
-Imports
-- express imported in server.js
-- 
+
+
+MongoDB branch
+- Opsat MongoDB som database i stedet for mysql
+- MongoDB er importeret til Node, og indsat i package.json filen 
 
 
