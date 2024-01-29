@@ -2,6 +2,7 @@
 import express from "express";
 import db from "./database.js";
 import cors from "cors";
+import { ObjectId } from "mongodb";
 
 
 // INSERT contacts.js data i databasen
@@ -31,7 +32,6 @@ import cors from "cors";
 // Create Express app
 const server = express();
 const PORT = process.env.PORT;
-const ObjectId = import("mongodb").ObjectId;
 
 
 // Configure middleware 
@@ -61,6 +61,36 @@ res.json(contacts);
 }
 );
 
+// Search contacts GET, der på baggrund af req.query.q returnerer en json liste med alle contacts hvor firstname, lastname eller twitter indeholder q, ignorer case sensitivity, returner en liste med de kontakter der matcher
+
+server.get("/contacts/search", async (req, res) => {
+
+    try {
+        const searchString = req.query.q.toLowerCase(); // Hent søgestrengen fra URL-parametrene
+        const contacts = await db.collection("contacts").find({
+            $or: [
+                { first: { $regex: searchString, $options: "i" } },
+                { last: { $regex: searchString, $options: "i" } },
+                { twitter: { $regex: searchString, $options: "i" } }
+            ]
+        }).toArray();
+
+        if (contacts.length === 0) {
+            // Hvis ingen kontakter blev fundet, returner en fejlmeddelelse
+            res.status(404).json({ message: "No contacts found" });
+            return;
+        }
+
+        // Returner kontakter
+        res.json(contacts);
+    } catch (error) {
+        console.error("Error searching contacts:", error); // Udskriv fejlen til konsollen for yderligere fejlfinding
+        res.status(500).json({ message: "Error searching contacts", error });
+    }
+
+}
+);
+
 // MongoDB create new contact (POST) brug .insertOne() til at indsætte en ny contact i databasen og returner id på den nye contact
 // VIRKER
 
@@ -83,10 +113,10 @@ server.post("/contacts", async (req, res) => {
 
 server.put("/contacts/:id", async (req, res) => {
     try {
-        const contactId = req.params.id;
+        const _id = req.params.id; // Ændret variabelnavn til _id
         const update = req.body; 
         const result = await db.collection("contacts").updateOne(
-            { _id: ObjectId(contactId) }, // Brug ObjectId(contactId) som filter
+            { _id: new ObjectId(_id) }, // Brug new ObjectId(_id) som filter
             { $set: update }
         );
         if (result.modifiedCount === 0) {
@@ -101,6 +131,7 @@ server.put("/contacts/:id", async (req, res) => {
 });
 
 
+
 // Delete a contact (DELETE) using ObjectId() to delete a contact by id
 
 server.delete("/contacts/:id", async (req, res) => {
@@ -108,7 +139,7 @@ server.delete("/contacts/:id", async (req, res) => {
         const _id = req.params.id; // Her bruger vi bare _id direkte
         console.log(_id); // Add this line
         const result = await db.collection("contacts").deleteOne({ _id: new ObjectId(_id) });
-        
+
         if (result.deletedCount === 0) {
             res.status(404).json({ message: "No contacts found to delete" });
             return;
@@ -121,8 +152,82 @@ server.delete("/contacts/:id", async (req, res) => {
 });
 
 
+// PUT Route til at finde en favorit contact og sætte den til true, og returner en json message prop med en besked om at en contact er toggled til favorit
+
+server.put("/contacts/:id/favorite", async (req, res) => {
+    try {
+        const _id = req.params.id; // Hent kontaktens ID fra URL-parametrene
+        const contact = await db.collection("contacts").findOne({ _id: new ObjectId(_id) }); // Find kontakten i databasen
+
+        if (!contact) {
+            // Hvis kontakt ikke findes, returner en fejlmeddelelse
+            res.status(404).json({ message: "Contact not found" });
+            return;
+        }
+
+        // Toggle 'favorite' egenskaben
+        contact.favorite = !contact.favorite;
+
+        // Opdater kontakt i databasen med den nye 'favorite' værdi
+        const result = await db.collection("contacts").updateOne(
+            { _id: new ObjectId(_id) }, // Brug ObjectId(_id) som filter
+            { $set: { favorite: contact.favorite } }
+        );
+
+        if (result.modifiedCount === 0) {
+            // Hvis ingen kontakter blev opdateret, returner en fejlmeddelelse
+            res.status(500).json({ message: "Error updating contact" });
+            return;
+        }
+
+        // Returner en succesmeddelelse med den opdaterede kontakt
+        res.json({ message: `Contact ${contact.first} ${contact.last}'s favorite status toggled to ${contact.favorite}` });
+    } catch (error) {
+        console.error("Error toggling favorite status:", error); // Udskriv fejlen til konsollen for yderligere fejlfinding
+        res.status(500).json({ message: "Error toggling favorite status", error });
+    }
+});
 
 
+
+// Implementer en GET route der returnerer en json liste med alle contacts hvor favorit er true
+
+server.get("/contacts/favorites", async (req, res) => {
+
+    try {
+        const contacts = await db.collection("contacts").find({ favorite: true }).toArray();
+        res.json(contacts);
+    } catch (error) {
+        console.error("Error getting favorite contacts:", error); // Udskriv fejlen til konsollen for yderligere fejlfinding
+        res.status(500).json({ message: "Error getting favorite contacts", error });
+    }
+}
+);
+
+// Read one contact GET, der på baggrund af id returnerer en json contact med finone() og ObjectId() til at finde en contact by id
+
+server.get("/contacts/:id", async (req, res) => {
+
+    try {
+        const _id = req.params.id; // Hent kontaktens ID fra URL-parametrene
+        const contact = await db.collection("contacts").findOne({ _id: new ObjectId(_id) }); // Find kontakten i databasen
+
+        if (!contact) {
+            // Hvis kontakt ikke findes, returner en fejlmeddelelse
+            res.status(404).json({ message: "Contact not found" });
+            return;
+        }
+
+        // Returner kontakt
+        res.json(contact);
+    } catch (error) {
+        console.error("Error getting contact:", error); // Udskriv fejlen til konsollen for yderligere fejlfinding
+        res.status(500).json({ message: "Error getting contact", error });
+    }
+}
+);
+
+    
 
 
 
