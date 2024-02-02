@@ -40,7 +40,9 @@ const PORT = process.env.PORT;
 server.use(express.json());
 
 // Enable CORS
-server.use(cors());
+server.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:4000']
+}));
     
 // ========== Routes ========== //
 
@@ -50,12 +52,18 @@ server.use(cors());
     //res.send("Node.js REST API with Express.js and MongoDB")
 //});
 
-// MongoDB Route der henter alle contacts fra databasen VIRKER
+//server.get("/", (req, res) => {
+   // res.send("Node.js REST API with Express.js and MongoDB")
+//}
+//);
+
+
+// MongoDB Route der henter alle contacts fra databasen
 server.get("/contacts", async (req, res) => {
 const contacts = await db
     .collection("contacts")
-    .find({})
-    .sort({ firstname: 1, last: 1 })
+    .find()
+    .sort({ first: 1, last: 1 })
     .toArray();
 res.json(contacts);
 }
@@ -64,92 +72,103 @@ res.json(contacts);
 // Search contacts GET, der på baggrund af req.query.q returnerer en json liste med alle contacts hvor firstname, lastname eller twitter indeholder q, ignorer case sensitivity, returner en liste med de kontakter der matcher
 
 server.get("/contacts/search", async (req, res) => {
+  const searchString = req.query.q.toLowerCase(); // get query string from request URL and lowercase it
+  const query = {
+      $or: [
+          { first: { $regex: searchString, $options: "i" } },
+          { last: { $regex: searchString, $options: "i" } },
+      ],
+  }; // MongoDB query
 
-    try {
-        const searchString = req.query.q.toLowerCase(); // Hent søgestrengen fra URL-parametrene
-        const contacts = await db.collection("contacts").find({
-            $or: [
-                { first: { $regex: searchString, $options: "i" } },
-                { last: { $regex: searchString, $options: "i" } },
-                { twitter: { $regex: searchString, $options: "i" } }
-            ]
-        }).toArray();
+  const results = await db
+      .collection("contacts") // Get the contacts collection from the database
+      .find(query) // Find contacts matching query
+      .sort({ first: 1, last: 1 }) // Sort by first name, then last name
+      .toArray(); // Execute the query
 
-        if (contacts.length === 0) {
-            // Hvis ingen kontakter blev fundet, returner en fejlmeddelelse
-            res.status(404).json({ message: "No contacts found" });
-            return;
-        }
+  res.json(results); // Send the results as JSON
+});
 
-        // Returner kontakter
-        res.json(contacts);
-    } catch (error) {
-        console.error("Error searching contacts:", error); // Udskriv fejlen til konsollen for yderligere fejlfinding
-        res.status(500).json({ message: "Error searching contacts", error });
-    }
-
-}
-);
 
 // MongoDB create new contact (POST) brug .insertOne() til at indsætte en ny contact i databasen og returner id på den nye contact
 // VIRKER
 
 server.post("/contacts", async (req, res) => {
-    try {
+  const newContact = req.body; // get new contact object from request body
 
-        const newContact = req.body;
-        const result = await db.collection("contacts").insertOne(newContact);
-        res.json(result.insertedId);
-    }
+  const result = await db.collection("contacts").insertOne(newContact); // Insert new contact into database
 
-    catch (error) {
-        res.status(500).json({ message: "Error creating contact", error });
-    }
-
-}
-);
-
-// Update contact (PUT) opdater en eksisterende contact i databasen og returner id på den opdaterede contact
-
-server.put("/contacts/:id", async (req, res) => {
-    try {
-        const _id = req.params.id; // Ændret variabelnavn til _id
-        const update = req.body; 
-        const result = await db.collection("contacts").updateOne(
-            { _id: new ObjectId(_id) }, // Brug new ObjectId(_id) som filter
-            { $set: update }
-        );
-        if (result.modifiedCount === 0) {
-            res.status(404).json({ message: "No contacts found to update" });
-            return;
-        }
-        res.json({ message: "Contact updated successfully" });
-    } catch (error) {
-        console.error("Error updating contact:", error); // Udskriv fejlen til konsollen for yderligere fejlfinding
-        res.status(500).json({ message: "Error updating contact", error });
-    }
+  if (result.acknowledged) {
+      res.json({ message: "Created new contact", _id: result.insertedId }); // return message and id of new contact
+  } else {
+      res.status(500).json({ message: "Failed to create new contact" }); // return error message
+  }
 });
 
+// Update contact opdater en eksisterende contact i databasen og returner id på den opdaterede contact
+
+server.get("/contacts/:id", async (req, res) => {
+  const id = req.params.id; // get id from request URL
+
+  try {
+      const objectId = new ObjectId(id); // create ObjectId from id
+      const contact = await db
+          .collection("contacts")
+          .findOne({ _id: objectId }); // Get contact from database
+
+      if (contact) {
+          res.json(contact); // return first contact from results as JSON
+      } else {
+          res.status(404).json({ message: "Contact not found!" }); // otherwise return 404 and error message
+      }
+  } catch (error) {
+      res.status(400).json({ message: "Invalid ObjectId" }); // return 400 and error message for invalid ObjectId
+  }
+});
+
+// PUT Route til at opdatere en contact i databasen og returner en json message prop med en besked om at en contact er blevet opdateret
+
+server.put("/contacts/:id", async (req, res) => {
+  const id = req.params.id; // get id from request URL
+  try {
+      const objectId = new ObjectId(id); // create ObjectId from id
+      const updatedContact = req.body; // get updated properties from request body
+      const result = await db
+          .collection("contacts")
+          .updateOne({ _id: objectId }, { $set: updatedContact }); // Update contact in database
+
+      if (result.acknowledged) {
+          res.json({ message: `Updated contact with id ${id}` }); // return message
+      } else {
+          res.status(500).json({ message: "Failed to update contact" }); // return error message
+      }
+  } catch (error) {
+      res.status(400).json({ message: "Invalid ObjectId" }); // return 400 and error message for invalid ObjectId
+  }
+});
 
 
 // Delete a contact (DELETE) using ObjectId() to delete a contact by id
 
 server.delete("/contacts/:id", async (req, res) => {
-    try {
-        const _id = req.params.id; // Her bruger vi bare _id direkte
-        console.log(_id); // Add this line
-        const result = await db.collection("contacts").deleteOne({ _id: new ObjectId(_id) });
+  const id = req.params.id; // get id from request URL
 
-        if (result.deletedCount === 0) {
-            res.status(404).json({ message: "No contacts found to delete" });
-            return;
-        }
+  try {
+      const objectId = new ObjectId(id); // create ObjectId from id
+      const result = await db
+          .collection("contacts")
+          .deleteOne({ _id: objectId }); // Delete contact from database
 
-        res.json({ message: "Contact deleted successfully" });
-    } catch (error) {
-        res.status(500).json({ message: "Error deleting contact", error });
-    }
+      if (result.acknowledged) {
+          res.json({ message: `Deleted contact with id ${id}` }); // return message
+      } else {
+          res.status(500).json({ message: "Failed to delete contact" }); // return error message
+      }
+  } catch (error) {
+      res.status(400).json({ message: "Invalid ObjectId" }); // return 400 and error message for invalid ObjectId
+  }
 });
+
 
 
 // PUT Route til at finde en favorit contact og sætte den til true, og returner en json message prop med en besked om at en contact er toggled til favorit
@@ -203,6 +222,37 @@ server.get("/contacts/favorites", async (req, res) => {
     }
 }
 );
+
+// Toggle favorite property of contact (PUT /contacts/:id/favorite)
+server.patch("/contacts/:id/favorite", async (req, res) => {
+  const id = req.params.id; // get id from request URL
+
+  try {
+      const objectId = new ObjectId(id); // create ObjectId from id
+      const contact = await db
+          .collection("contacts")
+          .findOne({ _id: objectId }); // Get the contact from the database
+
+      if (contact) {
+          const newFavoriteValue = !contact.favorite; // Toggle the favorite field
+          // Update the contact in the database
+          await db
+              .collection("contacts")
+              .updateOne(
+                  { _id: objectId },
+                  { $set: { favorite: newFavoriteValue } }
+              );
+
+          res.json({
+              message: `Toggled favorite property of contact with id ${id}`,
+          }); // return message
+      } else {
+          res.status(404).json({ message: "Contact not found!" }); // return 404 if contact was not found
+      }
+  } catch (error) {
+      res.status(400).json({ message: "Invalid ObjectId" }); // return 400 and error message for invalid ObjectId
+  }
+});
 
 // Read one contact GET, der på baggrund af id returnerer en json contact med finone() og ObjectId() til at finde en contact by id
 
@@ -333,7 +383,7 @@ server.get("/contacts/:id", async (req, res) => {
 
 
 
-// Start server on port 3000
+// Start server on port 4000
 server.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });

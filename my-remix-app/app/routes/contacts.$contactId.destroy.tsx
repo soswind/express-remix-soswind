@@ -2,12 +2,15 @@ import type { ActionFunctionArgs } from "@remix-run/node";
 import { redirect } from "@remix-run/node";
 import invariant from "tiny-invariant";
 
-import { deleteContact } from "../data";
-
-export const action = async ({
-  params,
-}: ActionFunctionArgs) => {
+export async function action({ params }: ActionFunctionArgs) {
   invariant(params.contactId, "Missing contactId param");
-  await deleteContact(params.contactId);
+  const response = await fetch(process.env.API_URL + "/contacts/" + params.contactId, {
+    method: "DELETE",
+    });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Response(error.message, { status: response.status });
+  }
   return redirect("/");
-};
+}
+
