@@ -15,14 +15,14 @@ import {
   useSubmit,
 } from "@remix-run/react";
 
-import type { LinksFunction, LoaderFunctionArgs } from "@remix-run/node";
 import appStylesHref from "./app.css";
 
 
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request }) {
   const url = new URL(request.url);
   const q = url.searchParams.get("q");
+
   let apiUrl = process.env.API_URL + "/contacts";
   if (q) {
     apiUrl += "/search?q=" + encodeURIComponent(q);
@@ -31,17 +31,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
   if (!res.ok) {
     throw new Error("Failed to load contacts");
   }
-  const contacts: any[] = await res.json();
+  const contacts = await res.json();
   return json({ contacts, q });
 }
 
-export const links: LinksFunction = () => [
-  { rel: "stylesheet", href: appStylesHref },
-];
-
 
 export default function App() {
-  const { contacts, q } = useLoaderData<typeof loader>();
+  const { contacts, q } = useLoaderData();
   const navigation = useNavigation();
   const submit = useSubmit();
 
