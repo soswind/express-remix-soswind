@@ -52,10 +52,10 @@ server.use(cors({
     //res.send("Node.js REST API with Express.js and MongoDB")
 //});
 
-//server.get("/", (req, res) => {
-   // res.send("Node.js REST API with Express.js and MongoDB")
-//}
-//);
+server.get("/", (req, res) => {
+   res.send("Node.js REST API with Express.js and MongoDB")
+}
+);
 
 
 // MongoDB Route der henter alle contacts fra databasen
