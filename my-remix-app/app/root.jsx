@@ -15,8 +15,18 @@ import {
   useSubmit,
 } from "@remix-run/react";
 
+
+import tailwindStylesHref from "./tailwind.css";
 import appStylesHref from "./app.css";
 
+
+export function links() {
+  return [
+    { rel: "stylesheet", href: tailwindStylesHref },
+    { rel: "stylesheet", href: appStylesHref },
+
+  ];
+}
 
 
 export async function loader({ request }) {
@@ -63,13 +73,16 @@ return (
       <div id="sidebar">
         <h1>Remix Contacts</h1>
         <div>
-          <Form id="search-form" role="search" onChange={
-            (event) => {
+          <Form
+            id="search-form"
+            role="search"
+            onChange={(event) => {
               const isFirstSearch = q === null;
               submit(event.currentTarget, {
                 replace: !isFirstSearch,
-              })
-            }}>
+              });
+            }}
+          >
             <input
               id="q"
               aria-label="Search contacts"
@@ -90,9 +103,12 @@ return (
             <ul>
               {contacts.map((contact) => (
                 <li key={contact._id}>
-                  <NavLink to={`contacts/${contact._id}`} className={({ isActive, isPending }) => {
-                    return isActive ? "active" : isPending ? "pending" : ""
-                  }}>
+                  <NavLink
+                    to={`contacts/${contact._id}`}
+                    className={({ isActive, isPending }) => {
+                      return isActive ? "active" : isPending ? "pending" : "";
+                    }}
+                  >
                     {contact.first || contact.last ? (
                       <>
                         {contact.first} {contact.last}
@@ -100,9 +116,7 @@ return (
                     ) : (
                       <i>No Name</i>
                     )}{" "}
-                    {contact.favorite ? (
-                      <span>★</span>
-                    ) : null}
+                    {contact.favorite ? <span>★</span> : null}
                   </NavLink>
                 </li>
               ))}
@@ -114,7 +128,12 @@ return (
           )}
         </nav>
       </div>
-      <div id="detail" className={navigation.state === "loading" && !searching ? "loading" : ""}>
+      <div
+        id="detail"
+        className={
+          navigation.state === "loading" && !searching ? "loading" : ""
+        }
+      >
         <Outlet />
       </div>
 
@@ -125,7 +144,6 @@ return (
   </html>
 );
 }
-
 
 export async function action() {
   const response = await fetch(process.env.API_URL + "/contacts", {
