@@ -1,16 +1,14 @@
-import { json } from "@remix-run/node";
-import { Form, useLoaderData, useFetcher } from "@remix-run/react";
-import type { FunctionComponent } from "react";
-import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
+import { Form, NavLink, Outlet, isRouteErrorResponse, json, useRouteError, useLoaderData, useFetcher } from "@remix-run/react";
+import { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
 
-import type { ContactRecord } from "../data";
 import invariant from "tiny-invariant";
 
 
-
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ params }) {
   invariant(params.contactId, "Missing contactId param");
-  const response = await fetch(process.env.API_URL + "/contacts/" + params.contactId);
+  const response = await fetch(
+    process.env.API_URL + "/contacts/" + params.contactId,
+  );
   if (!response.ok) {
     const error = await response.json();
     throw new Response(error.message, { status: response.status });
@@ -21,7 +19,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
 
 export default function Contact() {
-    const { contact } = useLoaderData<typeof loader>();
+  const { contact } = useLoaderData();
     
     const contacts = {
     first: "Your",
@@ -91,22 +89,40 @@ export default function Contact() {
   );
 }
 
-export async function action({ params }: ActionFunctionArgs) {
+export async function action({ request, params }) {
   invariant(params.contactId, "Missing contactId param");
-  const response = await fetch(process.env.API_URL + "/contacts/" + params.contactId + "/favorite", {
-    method: "PATCH"
-  });
-  if (!response.ok) {
-    throw new Error("Failed to update favorite");
+  const formData = await request.formData();
+  if (formData.has("favorite")) {
+    const response = await fetch(
+      process.env.API_URL + "/contacts/" + params.contactId + "/favorite",
+      {
+        method: "PATCH",
+      },
+    );
+    if (!response.ok) {
+      throw new Error("Failed to update favorite");
+    }
+  } else if (formData.has("note")) {
+    const response = await fetch(
+      process.env.API_URL + "/contacts/" + params.contactId + "/notes",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(Object.fromEntries(formData)),
+      },
+    );
+    if (!response.ok) {
+      throw new Error("Failed to create note");
+    }
   }
-  return null
+  return null;
 }
 
-const Favorite: FunctionComponent<{
-  contact: Pick<ContactRecord, "favorite">;
-}> = ({ contact }) => {
-    const fetcher = useFetcher();
-    const favorite = fetcher.formData 
+function Favorite({ contact }) {
+  const fetcher = useFetcher();
+  const favorite = fetcher.formData
     ? fetcher.formData.get("favorite") === "true"
     : contact.favorite;
     

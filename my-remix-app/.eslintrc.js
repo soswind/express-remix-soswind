@@ -19,6 +19,10 @@ module.exports = {
     commonjs: true,
     es6: true,
   },
+  globals: {
+    // Because loaders and actions are defined in the apps routes, allow reading from 'process'.
+    process: "readonly",
+  },
 
   // Base config
   extends: ["eslint:recommended"],
@@ -34,6 +38,9 @@ module.exports = {
         "plugin:react-hooks/recommended",
         "plugin:jsx-a11y/recommended",
       ],
+      rules: {
+        "react/prop-types": "off", // Disable PropTypes validation
+      },
       settings: {
         react: {
           version: "detect",
