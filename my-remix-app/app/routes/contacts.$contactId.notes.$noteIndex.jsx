@@ -1,5 +1,7 @@
 import { json } from "@remix-run/node";
-import { useLoaderData, useNavigate } from "@remix-run/react";
+import { useLoaderData, useNavigate, isRouteErrorResponse, useRouteError } from "@remix-run/react";
+
+import ErrorMessage from "./ErrorMessage.jsx";
 
 export async function loader({ params }) {
   const noteResponse = await fetch(
@@ -40,3 +42,28 @@ export default function Note() {
     </div>
   );
 }
+
+
+export function ErrorBoundary() {
+    const error = useRouteError();
+  
+    if (isRouteErrorResponse(error)) {
+      return (
+        <ErrorMessage
+          title={error.status + " " + error.statusText}
+          message={error.data}
+          className="basis-1/4"
+        />
+      );
+    } else if (error instanceof Error) {
+      return (
+        <ErrorMessage
+          title={error.message}
+          message={error.stack}
+          className="basis-1/4"
+        />
+      );
+    } else {
+      return <ErrorMessage title="Unknown Error" className="basis-1/4" />;
+    }
+  }
