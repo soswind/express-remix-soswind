@@ -1,23 +1,26 @@
 import { json } from "@remix-run/node";
-import { useLoaderData, useNavigate, isRouteErrorResponse, useRouteError } from "@remix-run/react";
-
-import ErrorMessage from "./ErrorMessage.jsx";
+import {
+  isRouteErrorResponse,
+  useLoaderData,
+  useNavigate,
+  useRouteError,
+} from "@remix-run/react";
+import ErrorMessage from "~/components/ErrorMessage";
+import invariant from "tiny-invariant";
 
 export async function loader({ params }) {
-  const noteResponse = await fetch(
-    process.env.API_URL +
-      "/contacts/" +
-      params.contactId +
-      "/notes/" +
-      params.noteIndex,
-  );
+  invariant(params.contactId, "Missing contactId param");
+  invariant(params.noteIndex, "Missing noteIndex param");
 
-  if (!noteResponse.ok) {
-    const error = await noteResponse.json();
-    throw new Response(error.message, { status: noteResponse.status });
+  const contact = await mongoose.models.Contact.findById(params.contactId);
+  if (!contact) {
+    throw new Response("Contact not found", { status: 404 });
   }
 
-  const note = await noteResponse.json();
+  const note = contact.notes[params.noteIndex];
+  if (!note) {
+    throw new Response("Note not found", { status: 404 });
+  }
 
   return json({ note });
 }
@@ -35,35 +38,32 @@ export default function Note() {
           navigate("..");
         }}
       >
-
-        
         Close
       </button>
     </div>
   );
 }
 
-
 export function ErrorBoundary() {
-    const error = useRouteError();
-  
-    if (isRouteErrorResponse(error)) {
-      return (
-        <ErrorMessage
-          title={error.status + " " + error.statusText}
-          message={error.data}
-          className="basis-1/4"
-        />
-      );
-    } else if (error instanceof Error) {
-      return (
-        <ErrorMessage
-          title={error.message}
-          message={error.stack}
-          className="basis-1/4"
-        />
-      );
-    } else {
-      return <ErrorMessage title="Unknown Error" className="basis-1/4" />;
-    }
+  const error = useRouteError();
+
+  if (isRouteErrorResponse(error)) {
+    return (
+      <ErrorMessage
+        title={error.status + " " + error.statusText}
+        message={error.data}
+        className="basis-1/4"
+      />
+    );
+  } else if (error instanceof Error) {
+    return (
+      <ErrorMessage
+        title={error.message}
+        message={error.stack}
+        className="basis-1/4"
+      />
+    );
+  } else {
+    return <ErrorMessage title="Unknown Error" className="basis-1/4" />;
   }
+}

@@ -1,8 +1,8 @@
 import { Form, NavLink, Outlet, isRouteErrorResponse, json, useRouteError, useLoaderData, useFetcher } from "@remix-run/react";
-import { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
 
 import invariant from "tiny-invariant";
-import ErrorMessage from "/ErrorMessage.jsx";
+import ErrorMessage from "~/components/ErrorMessage";
+
 
 export async function loader({ params }) {
   invariant(params.contactId, "Missing contactId param");
