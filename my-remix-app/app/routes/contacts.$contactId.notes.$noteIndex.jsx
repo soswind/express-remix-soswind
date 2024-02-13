@@ -7,6 +7,7 @@ import {
 } from "@remix-run/react";
 import ErrorMessage from "~/components/ErrorMessage";
 import invariant from "tiny-invariant";
+import mongoose from "mongoose";
 
 export async function loader({ params }) {
   invariant(params.contactId, "Missing contactId param");

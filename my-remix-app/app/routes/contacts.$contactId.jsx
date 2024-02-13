@@ -2,18 +2,15 @@ import { Form, NavLink, Outlet, isRouteErrorResponse, json, useRouteError, useLo
 
 import invariant from "tiny-invariant";
 import ErrorMessage from "~/components/ErrorMessage";
+import mongoose from "mongoose";
 
 
 export async function loader({ params }) {
   invariant(params.contactId, "Missing contactId param");
-  const response = await fetch(
-    process.env.API_URL + "/contacts/" + params.contactId,
-  );
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Response(error.message, { status: response.status });
+  const contact = await mongoose.models.Contact.findById(params.contactId);
+  if (!contact) {
+    throw new Response("Contact not found", { status: 404 })
   }
-  const contact = await response.json();
   return json({ contact });
 }
 
@@ -139,33 +136,18 @@ export default function Contact() {
 export async function action({ request, params }) {
   invariant(params.contactId, "Missing contactId param");
   const formData = await request.formData();
+  const contact = await mongoose.models.Contact.findById(params.contactId);
   if (formData.has("favorite")) {
-    const response = await fetch(
-      process.env.API_URL + "/contacts/" + params.contactId + "/favorite",
-      {
-        method: "PATCH",
-      },
-    );
-    if (!response.ok) {
-      throw new Error("Failed to update favorite");
-    }
+    contact.favorite = formData.get("favorite") === "true";
+    
   } else if (formData.has("note")) {
-    const response = await fetch(
-      process.env.API_URL + "/contacts/" + params.contactId + "/notes",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(Object.fromEntries(formData)),
-      },
-    );
-    if (!response.ok) {
-      throw new Error("Failed to create note");
-    }
+    contact.notes.push({ note: formData.get("note") });
   }
+
+  await contact.save();
   return null;
 }
+
 
 function Favorite({ contact }) {
   const fetcher = useFetcher();
@@ -188,8 +170,10 @@ function Favorite({ contact }) {
         {favorite ? "★" : "☆"}
       </button>
     </fetcher.Form>
+
   );
 };
+
 
 export function ErrorBoundary() {
   const error = useRouteError();
