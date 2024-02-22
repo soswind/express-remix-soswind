@@ -1,91 +1,78 @@
-import { Form, NavLink, Outlet, isRouteErrorResponse, json, useRouteError, useLoaderData, useFetcher } from "@remix-run/react";
-
+import mongoose from "mongoose";
+import {
+  Form,
+  NavLink,
+  Outlet,
+  isRouteErrorResponse,
+  json,
+  useFetcher,
+  useLoaderData,
+  useRouteError,
+} from "@remix-run/react";
 import invariant from "tiny-invariant";
 import ErrorMessage from "~/components/ErrorMessage";
-import mongoose from "mongoose";
-
 
 export async function loader({ params }) {
   invariant(params.contactId, "Missing contactId param");
   const contact = await mongoose.models.Contact.findById(params.contactId);
   if (!contact) {
-    throw new Response("Contact not found", { status: 404 })
+    throw new Response("Contact not found", { status: 404 });
   }
   return json({ contact });
 }
 
-
 export default function Contact() {
   const { contact } = useLoaderData();
-    
-    const contacts = {
-    first: "Your",
-    last: "Name",
-    avatar: "https://placekitten.com/g/200/200",
-    twitter: "your_handle",
-    notes: "Some notes",
-    favorite: true,
-  };
-
   return (
     <div>
-    <div id="contact">
-      <div>
-        <img
-          alt={`${contact.first} ${contact.last} avatar`}
-          key={contact.avatar}
-          src={contact.avatar}
-        />
-      </div>
-
-      <div>
-        <h1>
-          {contact.first || contact.last ? (
-            <>
-              {contact.first} {contact.last}
-            </>
-          ) : (
-            <i>No Name</i>
-          )}{" "}
-          <Favorite contact={contact} />
-        </h1>
-
-        {contact.twitter ? (
-          <p>
-            <a
-              href={`https://twitter.com/${contact.twitter}`}
-            >
-              {contact.twitter}
-            </a>
-          </p>
-        ) : null}
-
-        {contact.notes ? <p>{contact.notes}</p> : null}
-
+      <div id="contact">
         <div>
-          <Form action="edit">
-            <button type="submit">Edit</button>
-          </Form>
-
-          <Form
-            action="destroy"
-            method="post"
-            onSubmit={(event) => {
-              const response = confirm(
-                "Please confirm you want to delete this record."
-              );
-              if (!response) {
-                event.preventDefault();
-              }
-            }}
-          >
-            <button type="submit">Delete</button>
-          </Form>
+          <img
+            alt={`${contact.first} ${contact.last} avatar`}
+            key={contact.avatar}
+            src={contact.avatar}
+          />
+        </div>
+        <div>
+          <h1>
+            {contact.first || contact.last ? (
+              <>
+                {contact.first} {contact.last}
+              </>
+            ) : (
+              <i>No Name</i>
+            )}{" "}
+            <Favorite contact={contact} />
+          </h1>
+          {contact.twitter ? (
+            <p>
+              <a href={`https://twitter.com/${contact.twitter}`}>
+                {contact.twitter}
+              </a>
+            </p>
+          ) : null}
+          <div>
+            <Form action="edit">
+              <button type="submit">Edit</button>
+            </Form>
+            <Form
+              action="destroy"
+              method="post"
+              onSubmit={(event) => {
+                const response = confirm(
+                  "Please confirm you want to delete this record.",
+                );
+                if (!response) {
+                  event.preventDefault();
+                }
+              }}
+            >
+              <button type="submit">Delete</button>
+            </Form>
+          </div>
         </div>
       </div>
-    </div>
-
-    <div id="notes">
+      <div id="notes">
         <div id="note-form">
           <h2 className="mb-3 mt-4 text-2xl font-bold">Notes</h2>
           {/* Add a key to the form to reset the state and clear the input when the contact changes */}
@@ -132,52 +119,38 @@ export default function Contact() {
     </div>
   );
 }
-
 export async function action({ request, params }) {
   invariant(params.contactId, "Missing contactId param");
   const formData = await request.formData();
   const contact = await mongoose.models.Contact.findById(params.contactId);
   if (formData.has("favorite")) {
     contact.favorite = formData.get("favorite") === "true";
-    
   } else if (formData.has("note")) {
     contact.notes.push({ note: formData.get("note") });
   }
-
   await contact.save();
   return null;
 }
-
 
 function Favorite({ contact }) {
   const fetcher = useFetcher();
   const favorite = fetcher.formData
     ? fetcher.formData.get("favorite") === "true"
     : contact.favorite;
-    
-
   return (
     <fetcher.Form method="post">
       <button
-        aria-label={
-          favorite
-            ? "Remove from favorites"
-            : "Add to favorites"
-        }
+        aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
         name="favorite"
         value={favorite ? "false" : "true"}
       >
         {favorite ? "★" : "☆"}
       </button>
     </fetcher.Form>
-
   );
-};
-
-
+}
 export function ErrorBoundary() {
   const error = useRouteError();
-
   if (isRouteErrorResponse(error)) {
     return (
       <ErrorMessage

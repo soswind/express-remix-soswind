@@ -1,5 +1,5 @@
 {
-  "include": ["remix.env.d.ts", "**/*.ts", "**/*.tsx", "app/routes/contacts.$contactId_.edit.jsx", "app/routes/contacts.$contactId.destroy.jsx", "app/routes/contacts.$contactId.jsx", "app/routes/_index.jsx", "app/root.jsx"],
+  "include": ["remix.env.d.ts", "**/*.ts", "**/*.tsx", "app/routes/contacts.$contactId_.edit.jsx", "app/routes/contacts.$contactId.destroy.jsx", "app/routes/contacts.$contactId.jsx", "app/routes/_index.jsx", "app/root.jsx", "tailwind.config.js"],
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "isolatedModules": true,
